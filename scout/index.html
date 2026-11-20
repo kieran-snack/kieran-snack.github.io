@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SnackScout</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍿</text></svg>">
+<style>
+  :root { --bg: #fffaf2; --ink: #2b2118; --muted: #7a6a5a; --brand: #e8742a; --card: #fff; --line: #eadfce; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #17120d; --ink: #fbf3e8; --muted: #b9a68f; --card: #221a13; --line: #3b2f23; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: var(--bg); color: var(--ink);
+    font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; padding: 16px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 32px 28px; max-width: 380px; width: 100%; text-align: center; }
+  .logo { font-size: 56px; }
+  h1 { margin: 6px 0 4px; font-size: 24px; }
+  p { color: var(--muted); margin: 8px 0; }
+  .spin { width: 28px; height: 28px; margin: 18px auto 6px; border: 3px solid var(--line); border-top-color: var(--brand); border-radius: 50%; animation: s .8s linear infinite; }
+  @keyframes s { to { transform: rotate(360deg); } }
+  a.btn { display: inline-block; margin-top: 14px; background: var(--brand); color: #fff; text-decoration: none; font-weight: 700; padding: 11px 20px; border-radius: 12px; }
+  .hide { display: none; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">🍿</div>
+  <h1>SnackScout</h1>
+  <div id="wait"><div class="spin"></div><p>Opening Team Snack Time's scouting app…</p></div>
+  <div id="off" class="hide">
+    <p><b>SnackScout is offline right now.</b></p>
+    <p>The team laptop isn't sharing it at the moment. Ask whoever runs the scouting laptop to click <b>Go online</b> in the SnackScout launcher, then try again.</p>
+    <a class="btn" href="">Try again</a>
+  </div>
+</div>
+<script>
+// The launcher on the team laptop writes the current link into link.json on the "link" branch.
+const REPO = "kieran-snack/kieran-snack.github.io";
+const sources = [
+  async () => JSON.parse(atob((await (await fetch(`https://api.github.com/repos/${REPO}/contents/link.json?ref=link`, {cache: "no-store"})).json()).content.replace(/\n/g, ""))),
+  async () => (await fetch(`https://raw.githubusercontent.com/${REPO}/link/link.json?t=${Date.now()}`, {cache: "no-store"})).json(),
+];
+function offline() { document.getElementById("wait").classList.add("hide"); document.getElementById("off").classList.remove("hide"); }
+async function reachable(url) {
+  try { await fetch(url + "/static/style.css", {mode: "no-cors", cache: "no-store", signal: AbortSignal.timeout(8000)}); return true; }
+  catch (e) { return false; }
+}
+(async () => {
+  let info = null;
+  for (const src of sources) { try { info = await src(); if (info) break; } catch (e) {} }
+  if (!info || !info.online || !/^https:\/\/[a-z0-9-]+\.trycloudflare\.com$/.test(info.url || "")) return offline();
+  const path = location.hash.length > 1 ? location.hash.slice(1) : "/";   // e.g. /scout#/team/16750
+  if (await reachable(info.url)) location.replace(info.url + (path.startsWith("/") ? path : "/"));
+  else offline();
+})();
+</script>
+</body>
+</html>
